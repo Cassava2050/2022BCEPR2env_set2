@@ -548,13 +548,6 @@ single_h2 %>%
   write.table("clipboard", sep = "\t", col.names = T, row.names = F, na = "")
 ```
 
-# palmira single model
-
-```{r}
-
-  
-```
-
 ## Multi environmetal analysis
 
 ```{r}
@@ -599,14 +592,16 @@ BLUPs_table <-
   ungroup() 
 #save the BLUPs data
 master_data[[paste0("BLUPs_", "gxe")]] <- BLUPs_table
+
+
 ```
 
 ## Genotypic Correlation: Locations
 
 ```{r dpi=300}
 
-#YIELD
-corrplot(met_results$VCOV$yield_ha$CORR, method="color",  
+#ROOT TYPE
+corrplot(met_results$VCOV$carotenoid1_8$CORR, method="color",  
          type="lower", order="hclust", 
          addCoef.col = "black", # Add coefficient of correlation
          tl.col="black",
