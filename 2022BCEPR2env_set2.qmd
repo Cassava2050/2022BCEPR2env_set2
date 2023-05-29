@@ -415,6 +415,18 @@ master_data[["mean_of_sd"]] = sd_mean
 
 ```
 
+# Plot the non variation traits
+
+```{r}
+trial_tidy_all %>% select(trial_name, thrips1_5) %>% 
+  ggplot(aes(x = trial_name, y = thrips1_5)) +
+  geom_violin(trim = FALSE, fill = "gray") +
+  geom_boxplot(width = 0.2, trim = FALSE) +
+  theme_xiaofei() +
+  labs(x = NULL)
+```
+
+
 ## Trait ideal
 
 ```{r}
