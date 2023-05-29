@@ -450,9 +450,9 @@ correlation <- gg_cor(
   data = trial_rm_sd[, trait_ideal],
   label_size = 2
   )
-ggsave(paste("images\\pheno_corr", trial_interest, Sys.Date(), ".png", sep = "_"),
-     plot = correlation, units = "in", dpi = 300, width = 12, height = 8
-   )
+# ggsave(paste("images\\pheno_corr", trial_interest, Sys.Date(), ".png", sep = "_"),
+#      plot = correlation, units = "in", dpi = 300, width = 12, height = 8
+#    )
 ```
 
 ## Check design experimental
@@ -480,8 +480,8 @@ results <- check_design_met(
 
 shared <- plot(results, type = "connectivity")
 
-ggsave(paste('images\\shared_', trial_interest, Sys.Date(), ".png", sep = "_"),
-       plot = shared, units = "in", dpi = 300, width = 8, height = 6)
+# ggsave(paste('images\\shared_', trial_interest, Sys.Date(), ".png", sep = "_"),
+#        plot = shared, units = "in", dpi = 300, width = 8, height = 6)
 
 summary <- results$summ_traits 
 
@@ -494,9 +494,9 @@ p1 <- summary %>%
   theme(axis.text.x = element_text(hjust = 1 , angle = 45, size = 16),
         axis.text.y = element_text(size = 16))
 p1
-ggsave(paste("images\\missing_", trial_interest, Sys.Date(), ".png", sep = "_"),
-     plot = p1, units = "in", dpi = 300, width = 15, height = 6
-   )
+# ggsave(paste("images\\missing_", trial_interest, Sys.Date(), ".png", sep = "_"),
+#      plot = p1, units = "in", dpi = 300, width = 15, height = 6
+#    )
 master_data[["summ_traits"]] <- summary
 ```
 
@@ -533,7 +533,15 @@ for (i in 1:length(trials)) {
  master_data[[paste0("BLUP_BLUE_", trials[i])]] <- blue_blup
 }
 
+master_data$BLUP_BLUE_202230BCEPR_ciat
 ```
+
+```{r}
+my_dat %>% filter(trial_name == "202230BCEPR_ciat") %>% 
+  select(accession_name, WAB_20min_10mon)
+```
+
+
 
 ## Single heritability
 
@@ -556,116 +564,48 @@ heri <- obj$resum_fitted_model[ ,1:3] %>%
   
 master_data[["single_h2"]] <- single_h2
 
-single_h2 %>%
+obj$resum_fitted_model[ ,1:3] %>%
   write.table("clipboard", sep = "\t", col.names = T, row.names = F, na = "")
 ```
 
-## Multi environmetal analysis
-
-```{r}
-# Traits to remove because they are in only one trial and h2 < 0.1
-traits_to_remove <- single_h2 %>% 
-  pivot_longer(!trial, names_to = "traits", values_to = "heritability") %>% 
-  filter(heritability < 0.1 | is.na(heritability)) %>% distinct(traits) %>% pull(traits)
-
-# traits removed because of low heritability
-single_h2 %>% 
-  pivot_longer(!trial, names_to = "traits", values_to = "heritability") %>% 
-  filter(heritability < 0.1 | is.na(heritability)) %>% 
-  write.table("clipboard", sep = "\t", col.names = T, row.names = F)
-
-# MET
-
-met_results <- met_analysis(obj,
-  filter_traits = 
-    trait_ideal[!trait_ideal %in% c(traits_to_remove)], 
-  h2_filter = 0.1,
-  progress = TRUE
-)
-
-
-# h2 gxe
-master_data[["h2_gxe"]] <- 
-  met_results$heritability %>% 
-  arrange(desc(h2)) %>%
-  mutate(across(where(is.numeric), round, 2))
-
-master_data$h2_gxe %>%
-  write.table("clipboard", col.names = T, row.names = F, sep = "\t")
-
-# BLUPs gxe
-BLUPs_table <- 
-  met_results$overall_BLUPs %>% 
-  select(-c(std.error, status)) %>% 
-  group_by(genotype) %>% 
-  spread(trait, value = predicted.value) %>% 
-  rename("accession_name" = genotype) %>% 
-  mutate(across(where(is.numeric), round, 2)) %>% 
-  ungroup() 
-#save the BLUPs data
-master_data[[paste0("BLUPs_", "gxe")]] <- BLUPs_table
-
-
-```
-
-## Genotypic Correlation: Locations
-
-```{r dpi=300}
-
-#ROOT TYPE
-corrplot(met_results$VCOV$carotenoid1_8$CORR, method="color",  
-         type="lower", order="hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col="black",
-         tl.cex = 0.8,#Text label color and rotation
-         diag=T 
-         )
-
-#DM_gravity
-corrplot(met_results$VCOV$DM_gravity$CORR, method="color",  
-         type="lower", order="hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col="black",
-         tl.cex = 0.8,#Text label color and rotation
-         diag=T 
-         )
-
-# height_1st_branch
-corrplot(met_results$VCOV$height_1st_branch$CORR, method="color",  
-         type="lower", order="hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col="black",
-         tl.cex = 0.8,#Text label color and rotation
-         diag=T
-         )
-```
 
 ## Save the BLUEs or raw data across the trials
 
 ```{r}
-variables <- colnames(BLUPs_table)[!grepl("accession_name", colnames(BLUPs_table))]
+variables <- trait_ideal
 for (var in variables) {
   
   cat("\n_______________")
   cat("\nTRAIT:", var, "\n")
   cat("_______________\n")
   
-  blue_blup <-
+  blue <-
   obj$blues_blups %>%
   select(trial, genotype, trait, BLUEs) %>%
-  spread(trait, value = BLUEs) %>%
-  select(trial, genotype, any_of(var)) %>%
-  group_by(trial, genotype) %>%
-  pivot_wider(names_from = trial, values_from = any_of(var)) %>%
-  right_join(BLUPs_table %>%
-    select(accession_name, any_of(var)), by = c("genotype" = "accession_name")) %>%
-  arrange(is.na(across(where(is.numeric))), across(where(is.numeric))) %>%
+    spread(trait, value = BLUEs) %>% 
+    pivot_wider(names_from = trial, values_from = c(
+    paste("BLUEs", variables, sep = "_")
+  ))
+    
+    
+  #  %>%
+  # select(trial, genotype, any_of(var)) %>%
+  # group_by(trial, genotype) %>%
+  # pivot_wider(names_from = trial, values_from = any_of(var)) %>%
+  # right_join(BLUPs_table %>%
+  #   select(accession_name, any_of(var)), by = c("genotype" = "accession_name")) %>%
+  
+
+
+}
+
+arrange(is.na(across(where(is.numeric))), across(where(is.numeric))) %>%
   mutate(across(where(is.numeric), round, 2))
 # remove all NA columns
 blue_blup <- blue_blup[, colSums(is.na(blue_blup)) < nrow(blue_blup)]
 
 master_data[[paste0("BLUP_BLUE_", var)]] <- blue_blup
-}
+
 ```
 
 ## Stability analysis
@@ -702,7 +642,7 @@ stab_values <- master_data[ind] %>%
 ## BLUE and BLUP data together
 
 ```{r}
-BLUEs_BLUPs <- 
+BLUEs <- 
   obj$blues_blups %>%
   select(trait, genotype, trial, BLUEs, seBLUEs) %>%
   filter(trait %in% variables) %>% 
@@ -710,63 +650,75 @@ BLUEs_BLUPs <-
   pivot_wider(names_from = trial, values_from = c(
     paste("BLUEs", variables, sep = "_"),
     paste("seBLUEs", variables, sep = "_")
-  )) %>%
-  left_join(
-    met_results$overall_BLUPs %>%
-      select(!status) %>%
-      rename(
-        BLUPs = predicted.value,
-        seBLUPs = std.error
-      ) %>%
-      pivot_wider(names_from = "trait", values_from = c("BLUPs", "seBLUPs")),
-    by = "genotype"
-  ) %>%
-  #arrange(desc(BLUPs_DM_gravity)) %>% 
-  arrange(is.na(across(where(is.numeric))), across(where(is.numeric))) %>%
-  mutate(across(where(is.numeric), round, 2))
-# remove all NA columns
-  BLUEs_BLUPs <- BLUEs_BLUPs[, colSums(is.na(BLUEs_BLUPs)) < nrow(BLUEs_BLUPs)]
+  ))
 
-# put all together stab_values with blues_blups
-BLUEs_BLUPs <- 
-  BLUEs_BLUPs %>% left_join(stab_values, by = 'genotype')  
-  
-    
+BLUPs <- 
+  obj$blues_blups %>%
+  select(trait, genotype, trial, BLUPs, seBLUPs) %>%
+  filter(trait %in% variables) %>% 
+  pivot_wider(names_from = "trait", values_from = c("BLUPs", "seBLUPs")) %>%
+  pivot_wider(names_from = trial, values_from = c(
+    paste("BLUPs", variables, sep = "_"),
+    paste("seBLUPs", variables, sep = "_")
+  ))
+
+# palmira_test_clones
+palmira_tests <- my_dat %>% filter(trial_name %in% c("202230BCEPR_ciat"), !check_test == "check") %>% 
+  select(trial_name, accession_name, any_of(variables)) 
+
+
+colnames(palmira_tests)[-c(1,2)] <- 
+  paste("raw", colnames(palmira_tests)[-c(1,2)], palmira_tests$trial_name, sep = "_")
+ 
+# mean of Palmira_checks
+
+palmira_checks <- my_dat %>% filter(trial_name %in% c("202230BCEPR_ciat"), check_test == "check") %>% 
+  select(accession_name, any_of(variables)) %>% 
+  group_by(accession_name) %>% 
+  summarize(across(everything(), mean, na.rm = TRUE))
+
+# replace NAN values by NA
+palmira_checks[is.na(palmira_checks)] <- NA
+
+colnames(palmira_checks)[-c(1)] <- 
+  paste("raw", colnames(palmira_checks)[-c(1)], palmira_tests$trial_name, sep = "_")
+
+# bind checks and test from palmira trial
+
+palmira_trial <- palmira_tests %>% select(-trial_name) %>% 
+  bind_rows(palmira_checks)
+
+# JOIN blue, blup and raw values. dont forget dont display se
+
+raw_BLUEs_BLUPs <- BLUEs %>% left_join(BLUPs, by = "genotype") %>% 
+  left_join(palmira_trial, by = c("genotype" = "accession_name")) %>% 
+  mutate(across(where(is.numeric), round, 2))
+
+# remove all NA columns
+  raw_BLUEs_BLUPs <- raw_BLUEs_BLUPs[, colSums(is.na(raw_BLUEs_BLUPs)) < nrow(raw_BLUEs_BLUPs)]
+
+# order colnames
 header_sort = vector()
 for (i in 1:length(variables)) {
   
   header_sort = c(header_sort, 
-                  grep(variables[i], sort(names(BLUEs_BLUPs)), value=TRUE) 
+                  grep(variables[i], sort(names(raw_BLUEs_BLUPs)), value=TRUE) 
   )
   
 }
 
-BLUEs_BLUPs <- BLUEs_BLUPs %>%
+# remove se values
+raw_BLUEs_BLUPs <- raw_BLUEs_BLUPs %>%
   select(genotype, all_of(header_sort), -starts_with("se")) 
-BLUEs_BLUPs <- BLUEs_BLUPs %>% 
-  relocate(colnames(BLUEs_BLUPs)[str_detect(colnames(BLUEs_BLUPs), "DM_gravity")], .after = genotype)
+
+# relocate root_type
+raw_BLUEs_BLUPs <- raw_BLUEs_BLUPs %>% 
+  relocate(colnames(raw_BLUEs_BLUPs)[str_detect(colnames(raw_BLUEs_BLUPs), "root_type1_5")], .after = genotype)
 
 
-master_data[["BLUEs_BLUPs_MET"]] = BLUEs_BLUPs
+master_data[["raw_BLUEs_BLUPs"]] <- raw_BLUEs_BLUPs
 ```
 
-## Genotypic correlation
-
-```{r}
-
-geno_cor <- gg_cor(
-  colours = c("red", "white", "blue"),
-  data = BLUPs_table, # remove carotenoids
-  label_size = 4
-) + 
-  theme(
-  axis.text.y = element_text(size = 14),
-  axis.text.x = element_text(size = 14))
-
-
-ggsave(paste("images\\geno_corr", trial_interest, Sys.Date(), ".png", sep = "_"),
-       plot = geno_cor, units = "in", dpi = 300, width = 10, height = 8)
-```
 
 ## Save the master data results
 
@@ -776,17 +728,6 @@ meta_file_name <- paste0(folder_output, paste("2022", trial_interest, "master_re
 
 
 write.xlsx(master_data, file = meta_file_name)
-
-# It is neccessary change some elements names from master_file
-grep("^stability_root_number_commercial", names(master_data))
-
-names(master_data)[10] <- "BLUP_BLUE_germ_number_plot"
-names(master_data)[13] <- "BLUP_BLUE_root_commercial"
-names(master_data)[21] <- "stability_germ_number_plot"
-names(master_data)[24] <- "stability_root_commercial"
-
-write.xlsx(master_data, file = meta_file_name)
-
 ```
 
 ## Index selection
@@ -802,8 +743,10 @@ blupDF_kp <- read_excel(
     sel_file[1],
     sep = ""
   ),
-  sheet = paste0("BLUPs_", "gxe")
+  sheet = paste0("BLUP_BLUE_202238BCEPR_cere")
 )
+
+
 ```
 
 ## Selection index
@@ -811,10 +754,10 @@ blupDF_kp <- read_excel(
 ```{r}
 colnames(blupDF_kp)
 
-index_traits <- c("DM_gravity", "height_1st_branch", "yield_ha")
+index_traits <- c("BLUPs_DM_gravity", "BLUPs_plant_type", "BLUPs_yield_ha")
 
 index_dat <- blupDF_kp %>%
-  select("accession_name", all_of(index_traits)) %>% 
+  select("genotype", all_of(index_traits)) %>% 
   drop_na()
 ```
 
@@ -883,26 +826,26 @@ selIndex <- function (Y, b, scale = FALSE)
 
 ```{r}
 
-res.pca <- pca_index(data = index_dat, id = "accession_name", b = c(10, 10, 10), percentage = 0.20)
+res.pca <- pca_index(data = index_dat, id = "genotype", b = c(10, -5, 10), percentage = 0.20)
 res.pca_final <- res.pca$final
 res.pca_final
 ggsave(paste("images/selection",  trial_interest, Sys.Date(), ".png"), plot = res.pca_final, units = "in", dpi = 300, width = 10, height = 10)
 res.pca$selection
-selections <- res.pca$results %>% rownames_to_column(var = "accession_name") 
+selections <- res.pca$results %>% rownames_to_column(var = "genotype") 
 
 ```
 
 ## Add index column to BLUEs_BLUPs_MET
 
 ```{r}
-BLUEs_BLUPs <- 
-  master_data$BLUEs_BLUPs_MET %>% 
-  left_join(selections[-c(2:4)], by = c("genotype" = "accession_name")) %>% 
+raw_BLUEs_BLUPs <- 
+  master_data$raw_BLUEs_BLUPs %>% 
+  left_join(selections[-c(2:4)], by = c("genotype" = "genotype")) %>% 
   relocate(index, selected, .before = 2)
 
-BLUEs_BLUPs <- BLUEs_BLUPs %>% 
+raw_BLUEs_BLUPs <- raw_BLUEs_BLUPs %>% 
   arrange(is.na(selected))
-master_data[["BLUEs_BLUPs_MET"]] = BLUEs_BLUPs
+master_data[["raw_BLUEs_BLUPs"]] = raw_BLUEs_BLUPs
 ```
 
 ## Save the master data results
